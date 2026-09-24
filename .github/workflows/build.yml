@@ -11,6 +11,12 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Use x86-64 garrysmod_common
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force external/garrysmod_common
+          git clone --recursive --depth 1 --shallow-submodules --branch x86-64-support-sourcesdk https://github.com/danielga/garrysmod_common external/garrysmod_common
+
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64

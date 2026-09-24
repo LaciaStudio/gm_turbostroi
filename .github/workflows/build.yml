@@ -17,6 +17,13 @@ jobs:
           Remove-Item -Recurse -Force external/garrysmod_common
           git clone --recursive --depth 1 --shallow-submodules --branch x86-64-support-sourcesdk https://github.com/danielga/garrysmod_common external/garrysmod_common
 
+      - name: Patch for x64 SDK API
+        shell: pwsh
+        run: |
+          $f = 'source/source_sdk.cpp'
+          (Get-Content $f -Raw) -replace 'RecursiveSaveToFile\(buf, 0, false, false\)', 'RecursiveSaveToFile(buf, 0)' | Set-Content $f -NoNewline
+          Select-String -Path $f -Pattern 'RecursiveSaveToFile'
+
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64

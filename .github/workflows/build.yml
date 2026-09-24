@@ -1,0 +1,46 @@
+name: build-win64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build LuaJIT (x64, static)
+        shell: cmd
+        run: |
+          cd external\luajit\src
+          call msvcbuild.bat static
+          if not exist ..\x64 mkdir ..\x64
+          copy /y lua51.lib ..\x64\lua51.lib
+          copy /y lua51.lib ..\x64\luajit.lib
+
+      - name: Generate project (premake)
+        shell: pwsh
+        run: |
+          $rel = Invoke-RestMethod https://api.github.com/repos/premake/premake-core/releases -Headers @{ Authorization = "Bearer ${{ github.token }}" }
+          $asset = $rel | ForEach-Object { $_.assets } | Where-Object { $_.name -match 'windows\.zip$' } | Select-Object -First 1
+          Write-Host "premake: $($asset.name)"
+          Invoke-WebRequest $asset.browser_download_url -OutFile premake.zip
+          Expand-Archive premake.zip -DestinationPath premake
+          $p = (Get-ChildItem premake -Recurse -Filter premake5.exe | Select-Object -First 1).FullName
+          & $p lualib2header
+          & $p vs2022
+
+      - name: Build (Release x64)
+        shell: cmd
+        run: msbuild projects\windows\vs2022\turbostroi.sln /m /p:Configuration=Release /p:Platform=x64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gmsv_turbostroi_win64
+          path: projects/**/*.dll
